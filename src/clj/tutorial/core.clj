@@ -24,12 +24,14 @@
 
 (defn lose-punctuation [coll] (apply str (filter alphanumeric? coll)))
 
-(def WPcoll 
+(def wpcoll 
   (with-open [rdr (j/reader "/Users/mallory/Downloads/WarandPeace.txt")]
     ;(filter #(not (s/blank? (apply str %))) 
             (map lose-punctuation (apply concat  (map split-words (doall (line-seq rdr)))))))
 
 (defn split-book-n [n coll] (map-coll (take n coll)))
+
+;assignment 3
 
 (defn better-split-book [coll]
   (loop [remaining-words coll final-map {}]
@@ -42,5 +44,26 @@
                    (update-in final-map [word] inc)
                    (assoc final-map word 1)))))))
 
-(defn better-map-pattern [n coll]
+(defn map-frequency [n coll]
   (sort-by val (better-split-book (partition n 1 coll)))) 
+
+(defn find-random-key [n coll] (key (rand-nth (seq (map-frequency n coll)))))
+
+(defn key321 [coll] 
+  (let [coll3 (find-random-key 3 coll)]
+    (list (str (first coll3)) (str (second coll3)))))
+
+(defn map-key-all [n coll] (map key (map-frequency n coll)))
+
+(defn matching [coll]
+  (let [coll1 (find-random-key 1 coll)
+        key-all (map-key-all 2 coll)]
+    (println coll1)
+    (filter #(= (first coll1) (first %)) key-all)))
+
+(defn matching3 [coll]
+  (let [coll3 (find-random-key 3 coll)
+        key23 (rest coll3)
+        key-all (map-key-all 3 coll)]
+    (println coll3)
+    (filter #(= (rest coll3) (key321 %)) key-all)))
