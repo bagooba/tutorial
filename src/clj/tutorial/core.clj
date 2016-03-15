@@ -45,7 +45,7 @@
                    (assoc final-map word 1)))))))
 
 (defn map-frequency [n coll]
-  (sort-by val (better-split-book (partition n 1 coll)))) 
+  (into {} (sort-by val (better-split-book (partition n 1 coll))))) 
 
 (defn find-random-key [n coll] (key (rand-nth (seq (map-frequency n coll)))))
 
@@ -56,14 +56,25 @@
 (defn map-key-all [n coll] (map key (map-frequency n coll)))
 
 (defn matching [coll]
-  (let [coll1 (find-random-key 1 coll)
-        key-all (map-key-all 2 coll)]
+  (let [coll1 (find-prob-key (map-frequency 1 coll))]
     (println coll1)
-    (filter #(= (first coll1) (first %)) key-all)))
+    (filter #(= (first coll1) (first (key %))) (map-frequency 2 coll))))
 
 (defn matching3 [coll]
-  (let [coll3 (find-random-key 3 coll)
-        key23 (rest coll3)
-        key-all (map-key-all 3 coll)]
+  (let [coll3 (find-prob-key (map-frequency 3 coll))
+        key23 (rest coll3) ]
     (println coll3)
-    (filter #(= (rest coll3) (key321 %)) key-all)))
+    (filter #(= (rest coll3) (key321 (key %))) (map-frequency 3 coll))))
+
+;assignment 4
+
+(defn find-prob-key [m] 
+  (let [items (keys m)
+        sum (reduce + (vals m)) 
+        target (rand sum)]
+    (loop [[part & remaining] items
+           accumulation (m part)]
+          (if (> accumulation target)
+            part
+            (recur remaining (+ accumulation (m (first remaining))))))))
+
