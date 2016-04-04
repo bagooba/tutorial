@@ -20,7 +20,7 @@
 
 ;assignment 2
 
-(defn alphanumeric? [c] (contains? (apply hash-set (map char (concat (range 48 58) (range 65 91) (range 97 123) [45 47 39]))) c))
+(defn alphanumeric? [c] (contains? (apply hash-set (map char (concat (range 48 58) (range 65 91) (range 97 123) [45 47 39 33 46 63]))) c))
 
 (defn lose-punctuation [coll] (apply str (filter alphanumeric? coll)))
 
@@ -63,16 +63,19 @@
         sum (reduce + (vals m)) 
         target (rand sum)]
     (loop [[part & remaining] items
-           accumulation (m part)]
-          (let [_ (println (str "count:" (count remaining)))] (if (> accumulation target)
+            accumulation (m part)]
+          ;(let [_ (println (str "count:" (count remaining) " part: " (first part)))] 
+            (if (or (> accumulation target) (= sum 0))
               part
-              (recur remaining (+ accumulation (m (first remaining))))) ))))
+              (let [_ (println (str "remaining: " (first remaining) " accumulation: " accumulation " sum: " sum " target: " target))] 
+                (recur remaining (+ accumulation (m (first remaining)))))))));)
 
 (defn matcher [word coll]
-   (let [_ (println (str "thisword: " (type word ) " coll: " (type coll)))]
-     (filter #(= word (first (key %))) coll)))
+   ;(let [_ (println (str "thisword: " (type word ) " coll: " (type coll)))]
+     (filter #(= word (first (key %))) coll)) ;)
+
 (defn wordify-end-punct [coll]
-  (s/replace (s/replace (s/replace coll #"\." " .") #"!" " !") #"\?" " ?"))
+  (s/replace (s/replace (s/replace coll #"\." " .") #"\!" " !") #"\?" " ?"))
 
 (defn un-wordify-end-punct [coll]
     (s/replace (s/replace (s/replace coll #" \." ".") #" \!" "!") #" \?" "?"))
@@ -83,8 +86,8 @@
   (apply dissoc m (remove #(= (first %) word) (keys m))))
 
 (defn pair-to-triple [m words]
-  (let [_ (println (str "words: " words))] 
-    (apply dissoc m (remove #(and (= (first %) (first words)) (= (second %) (second words))) (keys m)))))
+  ;(let [_ (println (str "words: " words " first: " (first words)))] 
+    (apply dissoc m (remove #(and (= (first %) (first words)) (= (second %) (second words))) (keys m))));)
 
 (defn my-pair-to-triple [words m]
   ;note - takes a map of triples
@@ -93,18 +96,25 @@
 (def wpcoll1 
   (with-open [rdr (j/reader "/Users/mallory/Downloads/WarandPeace.txt")]
     ;(filter #(not (s/blank? (apply str %))) 
-            (map wordify-end-punct (apply concat (map split-words (doall (line-seq rdr)))))))
+            (map lose-punctuation (apply concat (map split-words (map wordify-end-punct (doall (line-seq rdr)))))) ))
 
 (defn key321 [coll] 
   (let [coll3 (find-random-key 3 coll)]
     (list (str (first coll3)) (str (second coll3)))))
 
 (defn key333 [coll]
-  (list (str (last (drop-last coll)) (last coll))))
+  (list (str (last (drop-last coll))) (str (last coll))))
 
 (defn matching3 [coll]
   (let [coll3 (find-prob-key (map-frequency 3 coll))
         key23 (rest coll3) ] (filter #(= (rest coll3) (key321 (key %))) (map-frequency 3 coll))))
+
+(defn update-vals [map vals f]
+  (reduce #(update-in % [%2] f) map vals))
+
+(defn my-dec [x] (if (= x 0)
+                   0
+                   (dec x)))
 
 (defn total-rewrite [m]
    (loop [coll2 (map-frequency 2 m)
@@ -112,22 +122,28 @@
           final-book (vec (find-prob-key (map-frequency 1 m)))] 
          (let [word (last final-book)
                words (key333 final-book)
-               _ (println (str "word2: " word))] 
+               _ (println (str "word2: " word)) ] 
            (cond 
-             (= (into {} (matcher word coll2)) (pair-to-triple coll3 words) {})
+             (= (reduce + (vals (into {} (matcher word coll2)))) (reduce + (vals (pair-to-triple coll3 words))) 0)
                 final-book   
-             (= (rest final-book) ())
-                (let [key2 (find-prob-key (into {} (matcher word coll2)))] 
-                    (recur (update-in coll2 [key2] dec)
+             (and (= (rest final-book) ()) (not (= (reduce + (vals (into {} (matcher word coll2)))) 0)))
+                (let [key2 (find-prob-key (into {} (matcher word coll2)))
+                     ; _ (println (str "coll21: " coll2 " coll31: " coll3))
+                      ] 
+                    (recur (update-in coll2 [key2] my-dec)
                            coll3
                            (conj final-book (last key2))))
-             (= (pair-to-triple coll3 words) {}) 
-                (let [key2 (find-prob-key (into {} (matcher word coll2)))] 
-                    (recur (update-in coll2 [key2] dec)
+             (= (reduce + (vals (pair-to-triple coll3 words))) 0) 
+                (let [key2 (find-prob-key (into {} (matcher word coll2)))
+                      ;_ (println (str "coll22: " coll2 " coll32: " coll3 " 2-to-3 val: " ()))
+                      ] 
+                    (recur (update-in coll2 [key2] my-dec)
                            coll3
                            (conj final-book (last key2))))
-             (not (= (pair-to-triple coll3 words) {}))   
-                (let [key3 (find-prob-key (pair-to-triple coll3 words))]
-                     (recur coll2 
-                           (update-in coll3 [key3] dec)
-                           (conj final-book (last key3))))))))
+             (not (= (reduce + (vals (pair-to-triple coll3 words))) 0))   
+                (let [key3 (find-prob-key (pair-to-triple coll3 words))
+                      ;_ (println (str "coll23: " coll2 " coll33: " coll3) " 2-to-3: " (pair-to-triple coll3 words))
+                      ]
+                     (recur (update-vals coll2 (keys (single-to-pair coll2 (second key3))) my-dec) 
+                            (update-in coll3 [key3] my-dec)
+                            (conj final-book (last key3))))))))
