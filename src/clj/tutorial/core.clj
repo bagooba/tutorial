@@ -65,7 +65,7 @@
     (loop [[part & remaining] items
             accumulation (m part)]
           ;(let [_ (println (str "count:" (count remaining) " part: " (first part)))] 
-            (if (or (> accumulation target) (= sum 0))
+            (if (> accumulation target)
               part
               (let [_ (println (str "remaining: " (first remaining) " accumulation: " accumulation " sum: " sum " target: " target))] 
                 (recur remaining (+ accumulation (m (first remaining)))))))));)
@@ -116,13 +116,14 @@
                    0
                    (dec x)))
 
-(defn total-rewrite [m]
-   (loop [coll2 (map-frequency 2 m)
-          coll3 (map-frequency 3 m) 
-          final-book (vec (find-prob-key (map-frequency 1 m)))] 
+(defn total-rewrite [coll]
+   (loop [coll2 (map-frequency 2 coll)
+          coll3 (map-frequency 3 coll) 
+          final-book (vec (find-prob-key (map-frequency 1 coll)))] 
          (let [word (last final-book)
                words (key333 final-book)
-               _ (println (str "word2: " word)) ] 
+               ;_ (println (str "word2: " word)) 
+               ] 
            (cond 
              (= (reduce + (vals (into {} (matcher word coll2)))) (reduce + (vals (pair-to-triple coll3 words))) 0)
                 final-book   
@@ -147,3 +148,60 @@
                      (recur (update-vals coll2 (keys (single-to-pair coll2 (second key3))) my-dec) 
                             (update-in coll3 [key3] my-dec)
                             (conj final-book (last key3))))))))
+
+;assignment 6 - a difficult problem from chapter 3 and chapter 4
+
+;;chapter 3 program:
+(defn mapset [func lst] 
+  (loop [acc #{}
+         new-list lst]
+        (if (empty? new-list)
+          acc
+          (recur (conj acc (func (first new-list))) (rest new-list)))))
+
+;;chapter 4 program:
+;;functions created within the chapter:
+(def records "suspects.csv")
+(def vamp-keys [:name :glitter-index]) 
+(defn str->int
+    [str]
+    (Integer. str)) 
+(def conversions {:name identity
+                 :glitter-index str->int})
+(defn convert
+     [vamp-key value]
+     ((get conversions vamp-key) value))
+(defn parse
+    "Convert a CSV into rows of columns"
+      [string]
+        (map #(clojure.string/split % #",")
+                    (clojure.string/split string #"\n"))) 
+(defn mapify
+    "Return a seq of maps like {:name \"Edward Cullen\" :glitter-index 10}"
+      [rows]
+        (map (fn [unmapped-row]
+                 (reduce (fn [row-map [vamp-key value]]
+                             (assoc row-map vamp-key (convert vamp-key value)))
+                         {}
+                         (map vector vamp-keys unmapped-row)))
+                    rows))
+(defn glitter-filter [minimum-glitter records] (filter #(>= (:glitter-index %) minimum-glitter) records))
+
+;;my functions
+
+;;append takes a name and glitter-index, like "Edward Cullen,10"
+(def record (mapify (parse (slurp records))))
+(defn append [new record] (assoc (mapify (parse new)) record))
+
+;;rejoin returns the maps created by mapify to their original CVS string state
+(defn rejoin [rec]
+    (loop [acc [] 
+           new-rec rec]
+          (if (empty? new-rec)
+            acc
+            (recur (conj acc (clojure.string/join "," (map str (vals (first new-rec)))))
+                   (rest new-rec)))))
+
+(defn rejoin2 [rec] (clojure.string/join "\n" (rejoin rec)))
+
+
