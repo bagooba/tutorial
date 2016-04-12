@@ -204,4 +204,30 @@
 
 (defn rejoin2 [rec] (clojure.string/join "\n" (rejoin rec)))
 
+;Chapter 5
+;1. You used (comp :intelligence :attributes) to create a function that returns a character’s intelligence. Create a new function, attr, that you can call like (attr :intelligence) and that does the same thing.
+;Book code
+(def character
+    {:name "Smooches McCutes"
+        :attributes {:intelligence 10 
+                     :strength 4 
+                     :dexterity 5}})
+(def c-int (comp :intelligence :attributes))
+(def c-str (comp :strength :attributes))
+(def c-dex (comp :dexterity :attributes))
 
+;my code
+(defn attr [k] (k (:attributes character)))
+
+;2. Implement the comp function
+(defn my-comp 
+  ([f g] 
+   (fn [& args]
+              (f (apply g args))))
+  ([f g & fs]
+   (my-comp f (my-comp g (reduce my-comp fs)))))
+
+;3. Implement update-in
+(defn my-update-in 
+  ([m [k & ks] f]
+   (assoc-in m (into [k] ks) (f (reduce get (get m k) ks)))))
